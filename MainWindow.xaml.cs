@@ -3998,7 +3998,7 @@ public partial class MainWindow : Window
         else if (TabTimer.IsChecked == true) RenderTimer();
         else if (TabSystem.IsChecked == true) _ = RefreshSystemAsync(full: true);
         else if (TabWidgets.IsChecked == true) RenderWidgetsPage();
-        else if (TabWorkspace.IsChecked == true) _ = RefreshWorkspaceAsync();
+        else if (TabWorkspace.IsChecked == true) StartWorkspaceRefresh();
         Remeasure();
     }
 
