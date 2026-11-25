@@ -3844,6 +3844,7 @@ public partial class MainWindow : Window
     private void SetMode(Mode mode)
     {
         var old = _mode;
+        if (old != mode) _modeGeneration++;
         _mode = mode;
         if (mode == Mode.Expanded && old != Mode.Expanded) HomeMissed.Refresh(fold: true);
 
@@ -3988,17 +3989,22 @@ public partial class MainWindow : Window
         Remeasure();
     }
 
-    /// <summary>Re-measure after content changed (e.g. Home layout).</summary>
     private bool _remeasurePending;
+    private Mode _remeasureMode;
+    private long _modeGeneration, _remeasureGeneration;
 
+    /// <summary>Re-measure after content changed (e.g. Home layout).</summary>
     private void Remeasure()
     {
-        if (_shutDown || _remeasurePending || _mode is not (Mode.Expanded or Mode.Claude)) return;
+        if (_shutDown || _mode is not (Mode.Expanded or Mode.Claude)) return;
+        _remeasureMode = _mode;
+        _remeasureGeneration = _modeGeneration;
+        if (_remeasurePending) return;
         _remeasurePending = true;
         Dispatcher.BeginInvoke(() =>
         {
             _remeasurePending = false;
-            if (_shutDown || _mode is not (Mode.Expanded or Mode.Claude)) return;
+            if (_shutDown || _mode != _remeasureMode || _modeGeneration != _remeasureGeneration) return;
             Measure("page: deferred measure", () => MorphTo(TargetSize(_mode)));
         }, DispatcherPriority.Loaded);
     }
