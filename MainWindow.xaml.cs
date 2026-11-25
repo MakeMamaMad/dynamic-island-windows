@@ -3976,7 +3976,8 @@ public partial class MainWindow : Window
         UpdatePageDots();
         if (_mode == Mode.Expanded)
         {
-            Kick(1.5);
+            // Tab selection already slides the page and morphs the island size.
+            // Do not add a second decorative impulse to the island body here.
             Measure("page: initial measure", () => MorphTo(TargetSize(Mode.Expanded)));
             Measure("page: content refresh", () => OnPageShown(sizeAlreadyMeasured: true));
         }
