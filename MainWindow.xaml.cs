@@ -3544,12 +3544,14 @@ public partial class MainWindow : Window
 
         bool liquid = StepLiquid(dt);
 
+        // Preserve both fit stages, but enqueue at most one frost refresh per rendering callback.
+        bool refreshFrost = false;
         // the size has arrived: fit the window to it now, even if the outline keeps moving with the music
         if (!_windowFitted && _w.IsSettled && _h.IsSettled)
         {
             _windowFitted = true;
             ShrinkWindowToPill();
-            Dispatcher.InvokeAsync(CaptureFrost, System.Windows.Threading.DispatcherPriority.Background);
+            refreshFrost = true;
         }
 
         if (_w.IsSettled && _h.IsSettled && _y.IsSettled && !liquid)
@@ -3558,8 +3560,11 @@ public partial class MainWindow : Window
             _rendering = false;
             UpdateShape(false);
             ShrinkWindowToPill();
-            Dispatcher.InvokeAsync(CaptureFrost, System.Windows.Threading.DispatcherPriority.Background);
+            refreshFrost = true;
         }
+
+        if (refreshFrost)
+            Dispatcher.InvokeAsync(CaptureFrost, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     // ---------------------------------------------------------------- window size
