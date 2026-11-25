@@ -3970,13 +3970,16 @@ public partial class MainWindow : Window
         {
             Kick(1.5);
             Measure("page: initial measure", () => MorphTo(TargetSize(Mode.Expanded)));
-            Measure("page: content refresh", OnPageShown);
+            Measure("page: content refresh", () => OnPageShown(sizeAlreadyMeasured: true));
         }
     }
 
     /// <summary>Lazy work for the tab that just became visible.</summary>
-    private void OnPageShown()
+    private void OnPageShown(bool sizeAlreadyMeasured = false)
     {
+        // Weather has no synchronous page-show refresh. Its size was just measured
+        // by SwitchPage; avoid queuing a second morph for that same transition.
+        if (sizeAlreadyMeasured && TabWeather.IsChecked == true) return;
         if (TabChat.IsChecked == true) _ = EnsureChatAsync();
         else if (TabMusic.IsChecked == true) RefreshVolume();
         else if (TabSettings.IsChecked == true) RefreshSettingsPage();
