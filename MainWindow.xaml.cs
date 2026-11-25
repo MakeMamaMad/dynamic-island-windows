@@ -3951,6 +3951,11 @@ public partial class MainWindow : Window
     private void Tab_Checked(object sender, RoutedEventArgs e)
     {
         if (HomePage == null || TabSettings == null) return; // during InitializeComponent
+        Measure("page: tab switch", () => SwitchPage(sender));
+    }
+
+    private void SwitchPage(object sender)
+    {
         int index = Array.IndexOf(PageTabs.Append(TabSettings).ToArray(), sender as RadioButton);   // in the order the user sees
         double slide = index > _tabIndex ? 26 : index < _tabIndex ? -26 : 0;
         _tabIndex = Math.Max(0, index);
@@ -3963,8 +3968,8 @@ public partial class MainWindow : Window
         if (_mode == Mode.Expanded)
         {
             Kick(1.5);
-            MorphTo(TargetSize(Mode.Expanded));
-            OnPageShown();
+            Measure("page: initial measure", () => MorphTo(TargetSize(Mode.Expanded)));
+            Measure("page: content refresh", OnPageShown);
         }
     }
 
@@ -3984,10 +3989,18 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Re-measure after content changed (e.g. Home layout).</summary>
+    private bool _remeasurePending;
+
     private void Remeasure()
     {
-        if (_mode is Mode.Expanded or Mode.Claude)
-            Dispatcher.BeginInvoke(() => MorphTo(TargetSize(_mode)), DispatcherPriority.Loaded);
+        if (_shutDown || _remeasurePending || _mode is not (Mode.Expanded or Mode.Claude)) return;
+        _remeasurePending = true;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _remeasurePending = false;
+            if (_shutDown || _mode is not (Mode.Expanded or Mode.Claude)) return;
+            Measure("page: deferred measure", () => MorphTo(TargetSize(_mode)));
+        }, DispatcherPriority.Loaded);
     }
 
     private static void Fade(UIElement element, double to, int ms, int delayMs, Action? completed = null)
