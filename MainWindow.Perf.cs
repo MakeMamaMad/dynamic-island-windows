@@ -192,13 +192,20 @@ public partial class MainWindow
 
     // ------------------------------------------------------------------ frame statistics while the island moves
 
-    private long _perfFrames, _perfSlow, _perfVerySlow;
-    private double _perfSum, _perfWorst;
+    private long _perfFrames, _perfSlow, _perfVerySlow, _perfLongGaps;
+    private double _perfSum, _perfWorst, _perfLongestGap;
     private DateTime _perfLogged = DateTime.UtcNow;
 
     private void RecordPerf(double dt)
     {
-        if (dt <= 0 || dt > 0.5) return;   // a pause, not a frame
+        if (!double.IsFinite(dt) || dt <= 0) return;
+        if (dt > 0.5)
+        {
+            // Keep long gaps separate: they may be stalls, sleep or interrupted rendering.
+            _perfLongGaps++;
+            _perfLongestGap = Math.Max(_perfLongestGap, dt);
+            return;
+        }
         _perfFrames++;
         _perfSum += dt;
         if (dt > 0.020) _perfSlow++;
@@ -212,10 +219,14 @@ public partial class MainWindow
         }
     }
 
-    private string PerfSummary() => _perfFrames == 0
-        ? "no animation frames yet"
-        : $"{_perfFrames} frames while moving, {1 / (_perfSum / _perfFrames):0} fps avg, late (>20 ms) {_perfSlow * 100.0 / _perfFrames:0.#}%, " +
-          $"very late (>50 ms) {_perfVerySlow * 100.0 / _perfFrames:0.#}%, worst {_perfWorst * 1000:0} ms";
+    private string PerfSummary()
+    {
+        string frames = _perfFrames == 0
+            ? "no animation frames yet"
+            : $"{_perfFrames} frames while moving, {1 / (_perfSum / _perfFrames):0} fps avg, late (>20 ms) {_perfSlow * 100.0 / _perfFrames:0.#}%, " +
+              $"very late (>50 ms) {_perfVerySlow * 100.0 / _perfFrames:0.#}%, worst {_perfWorst * 1000:0} ms";
+        return frames + $", long gaps (>500 ms, excluded from FPS): {_perfLongGaps}, longest {_perfLongestGap * 1000:0} ms";
+    }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct DevMode
