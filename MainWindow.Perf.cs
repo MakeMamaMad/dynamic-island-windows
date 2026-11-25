@@ -65,6 +65,49 @@ public partial class MainWindow
 
     private sealed class Cost { public long Calls, Ticks, Max; }
 
+    // Inclusive wall-clock stage timings, separate from the exclusive UI work totals.
+    // Fixed fields: no per-frame allocation, dictionary lookup, or logging.
+    private struct FrameStageCost
+    {
+        public long Calls, Ticks, Max;
+        public void Add(long ticks)
+        {
+            Calls++;
+            Ticks += ticks;
+            if (ticks > Max) Max = ticks;
+        }
+    }
+
+    private FrameStageCost _stageSpring, _stageProperties, _stageLiquid, _stageSettle, _stageTotal;
+
+    private void RecordFrameStages(long spring, long properties, long liquid, long settle, long total)
+    {
+        _stageSpring.Add(spring);
+        _stageProperties.Add(properties);
+        _stageLiquid.Add(liquid);
+        _stageSettle.Add(settle);
+        _stageTotal.Add(total);
+    }
+
+    private string FrameStagesReport()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Frame stages (since start or diagnostic reset, inclusive wall time):");
+        void Line(string name, FrameStageCost c)
+        {
+            if (c.Calls == 0) return;
+            double ms = 1000.0 / Stopwatch.Frequency;
+            sb.AppendLine($"  {name}: {c.Calls} calls, avg {c.Ticks * ms / c.Calls:0.000} ms, max {c.Max * ms:0.00} ms");
+        }
+        Line("spring and frame stats", _stageSpring);
+        Line("WPF property writes", _stageProperties);
+        Line("liquid step", _stageLiquid);
+        Line("settle and shape", _stageSettle);
+        Line("total callback body", _stageTotal);
+        if (_stageTotal.Calls == 0) sb.AppendLine("  none measured");
+        return sb.ToString();
+    }
+
     private Dictionary<string, Cost> _costs = [], _costsDone = [];
     private long _costsFrom = Stopwatch.GetTimestamp(), _costsDoneTicks;
     private TimeSpan _cpuFrom = CpuTime();
@@ -164,6 +207,7 @@ public partial class MainWindow
     /// <summary>Tests: start counting from now.</summary>
     private void ResetCosts()
     {
+        _stageSpring = _stageProperties = _stageLiquid = _stageSettle = _stageTotal = default;
         _costs = [];
         _costsDone = [];
         _costsFrom = Stopwatch.GetTimestamp();
@@ -259,7 +303,8 @@ public partial class MainWindow
         sb.AppendLine($"Island: scale {Dpi:0.00} · size {_settings.IslandScale}% · light graphics {(Lite ? "on" : "off")}{(_slowPcSeen ? " (auto)" : "")} · glass {(_settings.Glass ? "on" : "off")} · waves {(_settings.LiquidWaves ? "on" : "off")}");
         var power = System.Windows.Forms.SystemInformation.PowerStatus;
         sb.AppendLine($"Power: {(power.PowerLineStatus == System.Windows.Forms.PowerLineStatus.Offline ? "battery" : "plugged in")}");
-        sb.Append(TopCostsReport());
+        sb.AppendLine(TopCostsReport());
+        sb.Append(FrameStagesReport());
         return sb.ToString();
     }
 

@@ -3516,6 +3516,7 @@ public partial class MainWindow : Window
     {
         var now = ((RenderingEventArgs)e).RenderingTime;
         if (_hasLastFrame && now == _lastFrame) return;
+        long stageStart = System.Diagnostics.Stopwatch.GetTimestamp();
         bool hasPreviousFrame = _hasLastFrame;
         double rawDt = hasPreviousFrame ? (now - _lastFrame).TotalSeconds : 1 / 60.0;
         double dt = Math.Min(0.05, rawDt);
@@ -3532,6 +3533,7 @@ public partial class MainWindow : Window
         _w.Step(dt);
         _h.Step(dt);
         _y.Step(dt);
+        long stageSpringEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         // volume (Morph island): while the height moves fast the width gives back a little, up to 5 %
         Island.Width = Math.Max(20, _w.Value * (1 + Math.Clamp(-_h.Velocity / 7000, -0.05, 0.05)));
         // Morph island's states are small (36…84 px); this island opens to hundreds of pixels, and folding, the same
@@ -3542,7 +3544,9 @@ public partial class MainWindow : Window
         Island.Height = Math.Max(20, shownH);
         IslandShift.Y = _y.Value + _bodyY.Value;
 
+        long stagePropertiesEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         bool liquid = StepLiquid(dt);
+        long stageLiquidEnd = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // Preserve both fit stages, but enqueue at most one frost refresh per rendering callback.
         bool refreshFrost = false;
@@ -3565,6 +3569,10 @@ public partial class MainWindow : Window
 
         if (refreshFrost)
             Dispatcher.InvokeAsync(CaptureFrost, System.Windows.Threading.DispatcherPriority.Background);
+
+        long stageEnd = System.Diagnostics.Stopwatch.GetTimestamp();
+        RecordFrameStages(stageSpringEnd - stageStart, stagePropertiesEnd - stageSpringEnd,
+            stageLiquidEnd - stagePropertiesEnd, stageEnd - stageLiquidEnd, stageEnd - stageStart);
     }
 
     // ---------------------------------------------------------------- window size
