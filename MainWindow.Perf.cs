@@ -136,7 +136,7 @@ public partial class MainWindow
     private static double CpuPercent(TimeSpan cpu, long ticks) =>
         ticks <= 0 ? 0 : cpu.TotalSeconds / ((double)ticks / Stopwatch.Frequency) / Environment.ProcessorCount * 100;
 
-    private static string TopCosts(Dictionary<string, Cost> costs, long windowTicks, double cpu)
+    private static string TopCosts(Dictionary<string, Cost> costs, long windowTicks, double cpu, bool includePageCosts = false)
     {
         double secs = Math.Max(1, (double)windowTicks / Stopwatch.Frequency);
         static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
@@ -145,6 +145,19 @@ public partial class MainWindow
         foreach (var (name, c) in costs.OrderByDescending(kv => kv.Value.Ticks).Take(5))
             sb.Append($"{Environment.NewLine}  {name}: {Ms(c.Ticks) / secs:0.0} ms/s, avg {Ms(c.Ticks) / c.Calls:0.00} ms, max {Ms(c.Max):0} ms, {c.Calls / secs:0.#}/s");
         if (costs.Count == 0) sb.Append(" nothing measured yet");
+        if (includePageCosts)
+        {
+            // Rare but expensive transitions can be hidden by the total-work top five.
+            // Keep the same sample window; these exclusive costs may overlap the list above.
+            sb.Append($"{Environment.NewLine}Page transitions (same window, exclusive work):");
+            bool any = false;
+            foreach (var (name, c) in costs.Where(kv => kv.Key.StartsWith("page: ", StringComparison.Ordinal)).OrderBy(kv => kv.Key, StringComparer.Ordinal))
+            {
+                any = true;
+                sb.Append($"{Environment.NewLine}  {name}: {c.Calls} calls, avg {Ms(c.Ticks) / c.Calls:0.00} ms, max {Ms(c.Max):0.00} ms");
+            }
+            if (!any) sb.Append(" none measured");
+        }
         return sb.ToString();
     }
 
@@ -163,8 +176,8 @@ public partial class MainWindow
         long now = Stopwatch.GetTimestamp();
         bool current = _costsDone.Count == 0 || now - _costsFrom > Stopwatch.Frequency * 120;
         return current
-            ? TopCosts(_costs, now - _costsFrom, CpuPercent(CpuTime() - _cpuFrom, now - _costsFrom))
-            : TopCosts(_costsDone, _costsDoneTicks, _cpuDone);
+            ? TopCosts(_costs, now - _costsFrom, CpuPercent(CpuTime() - _cpuFrom, now - _costsFrom), includePageCosts: true)
+            : TopCosts(_costsDone, _costsDoneTicks, _cpuDone, includePageCosts: true);
     }
 
     // ------------------------------------------------------------------ no power throttling
