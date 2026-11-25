@@ -7,6 +7,28 @@ namespace DynamicIsland;
 public partial class MainWindow
 {
     private bool _workspaceReading;
+    private System.Windows.Threading.DispatcherTimer? _workspaceTimer;
+
+    private void StartWorkspaceRefresh()
+    {
+        if (_workspaceTimer == null)
+        {
+            _workspaceTimer = new System.Windows.Threading.DispatcherTimer(
+                System.Windows.Threading.DispatcherPriority.Background)
+            { Interval = TimeSpan.FromSeconds(5) };
+            _workspaceTimer.Tick += (_, _) =>
+            {
+                if (_shutDown || _mode != Mode.Expanded || TabWorkspace.IsChecked != true)
+                {
+                    _workspaceTimer.Stop();
+                    return;
+                }
+                _ = RefreshWorkspaceAsync();
+            };
+        }
+        _workspaceTimer.Start();
+        _ = RefreshWorkspaceAsync();
+    }
     private static string WorkspaceSnapshotPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "AI-WORKSPACE", "atoll-status.json");
@@ -21,8 +43,8 @@ public partial class MainWindow
         {
             var status = await Task.Run(ReadWorkspaceSnapshot);
             if (_shutDown) return;
-            WorkspaceStatus.Text = status.Status;
-            WorkspaceAgents.Text = status.Agents;
+            if (WorkspaceStatus.Text != status.Status) WorkspaceStatus.Text = status.Status;
+            if (WorkspaceAgents.Text != status.Agents) WorkspaceAgents.Text = status.Agents;
         }
         finally { _workspaceReading = false; }
     }
