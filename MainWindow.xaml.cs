@@ -3514,10 +3514,18 @@ public partial class MainWindow : Window
     {
         var now = ((RenderingEventArgs)e).RenderingTime;
         if (now == _lastFrame) return;
-        double dt = _lastFrame == TimeSpan.Zero ? 1 / 60.0 : Math.Min(0.05, (now - _lastFrame).TotalSeconds);
+        bool hasPreviousFrame = _lastFrame != TimeSpan.Zero;
+        double rawDt = hasPreviousFrame ? (now - _lastFrame).TotalSeconds : 1 / 60.0;
+        double dt = Math.Min(0.05, rawDt);
         _lastFrame = now;
 
-        if (!_w.IsSettled || !_h.IsSettled) { CountAnimationFrame(dt); RecordPerf(dt); }
+        if (!_w.IsSettled || !_h.IsSettled)
+        {
+            CountAnimationFrame(dt);
+            // Keep the spring step bounded, but report actual rendering intervals.
+            // The first callback after subscribing has no measured interval.
+            if (hasPreviousFrame) RecordPerf(rawDt);
+        }
         _w.Step(dt);
         _h.Step(dt);
         _y.Step(dt);
