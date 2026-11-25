@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private bool _hShrinking;
     private bool _rendering;
     private TimeSpan _lastFrame;
+    private bool _hasLastFrame;
 
     private Mode _mode = Mode.Compact;
     private bool _hidden;          // swiped away
@@ -3505,6 +3506,7 @@ public partial class MainWindow : Window
         if (_rendering) return;
         _rendering = true;
         _lastFrame = TimeSpan.Zero;
+        _hasLastFrame = false;
         CompositionTarget.Rendering += OnRendering;
     }
 
@@ -3513,11 +3515,20 @@ public partial class MainWindow : Window
     private void RenderFrame(EventArgs e)
     {
         var now = ((RenderingEventArgs)e).RenderingTime;
-        if (now == _lastFrame) return;
-        double dt = _lastFrame == TimeSpan.Zero ? 1 / 60.0 : Math.Min(0.05, (now - _lastFrame).TotalSeconds);
+        if (_hasLastFrame && now == _lastFrame) return;
+        bool hasPreviousFrame = _hasLastFrame;
+        double rawDt = hasPreviousFrame ? (now - _lastFrame).TotalSeconds : 1 / 60.0;
+        double dt = Math.Min(0.05, rawDt);
         _lastFrame = now;
+        _hasLastFrame = true;
 
-        if (!_w.IsSettled || !_h.IsSettled) { CountAnimationFrame(dt); RecordPerf(dt); }
+        if (!_w.IsSettled || !_h.IsSettled)
+        {
+            CountAnimationFrame(dt);
+            // Keep the spring step bounded, but report actual rendering intervals.
+            // The first callback after subscribing has no measured interval.
+            if (hasPreviousFrame) RecordPerf(rawDt);
+        }
         _w.Step(dt);
         _h.Step(dt);
         _y.Step(dt);
