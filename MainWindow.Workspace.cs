@@ -77,7 +77,7 @@ public partial class MainWindow
         _workspaceReading = true;
         try
         {
-            var status = await Task.Run(ReadWorkspaceSnapshot);
+            var status = await Task.Run(() => ReadWorkspaceSnapshot(WorkspaceSnapshotPath));
             if (_shutDown) return;
             ApplyWorkspaceActivity(status.Activity);
             if (WorkspaceStatus.Text != status.Status) WorkspaceStatus.Text = status.Status;
@@ -111,12 +111,12 @@ public partial class MainWindow
         }
     }
 
-    private static (string Status, List<(string State, string Count)>? Agents, WorkspaceActivity? Activity) ReadWorkspaceSnapshot()
+    internal static (string Status, List<(string State, string Count)>? Agents, WorkspaceActivity? Activity) ReadWorkspaceSnapshot(string path)
     {
         List<(string State, string Count)>? unavailable = null;
         try
         {
-            using var file = new FileStream(WorkspaceSnapshotPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             if (file.Length > 65536) return ("Invalid status snapshot", unavailable, null);
             using var buffer = new MemoryStream();
             var bytes = new byte[4096];
@@ -164,7 +164,7 @@ public partial class MainWindow
         }
     }
 
-    private sealed record WorkspaceActivity(int Running, string Summary, string History, List<(string Id, string Provider, string Status, string Task)> Completed);
+    internal sealed record WorkspaceActivity(int Running, string Summary, string History, List<(string Id, string Provider, string Status, string Task)> Completed);
     private readonly HashSet<string> _workspaceSeen = new();
     private bool _workspaceBaseline;
     private static readonly Dictionary<string, string> WorkspaceProviders = new()
