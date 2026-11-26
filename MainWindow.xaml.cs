@@ -3409,6 +3409,8 @@ public partial class MainWindow : Window
         if (_shutDown) return;
         _shutDown = true;
         _workspaceTimer?.Stop();
+        _workspaceWatcher?.Dispose();
+        _workspaceWatcher = null;
         for (int id = 1; id <= 7; id++) Native.UnregisterHotKey(_hwnd, id);
         Native.RemoveClipboardFormatListener(_hwnd);
         _sideToast?.Close();
