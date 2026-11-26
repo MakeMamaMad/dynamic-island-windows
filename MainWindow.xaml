@@ -152,6 +152,9 @@
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
             <!-- who uses the mic / camera right now (like the iOS dots) -->
+            <TextBlock x:Name="WorkspaceCompactActivity" Width="46" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AccentBlue}" VerticalAlignment="Center" TextAlignment="Center"
+                       Visibility="Collapsed" ToolTip="AI-WORKSPACE running agents"/>
             <Ellipse x:Name="MicDot" Width="7" Height="7" Fill="#FF9F0A" Margin="0,0,5,0" Visibility="Collapsed"/>
             <Ellipse x:Name="CamDot" Width="7" Height="7" Fill="#30D158" Margin="0,0,5,0" Visibility="Collapsed"/>
             <Border x:Name="UnreadBadge" Background="{DynamicResource AccentBlue}" CornerRadius="8" Padding="6,1"
@@ -1033,6 +1036,12 @@
                   </StackPanel>
                 </Border>
               </UniformGrid>
+              <TextBlock Text="Active projects and tasks" FontSize="13" FontWeight="SemiBold" Margin="3,8,3,4"/>
+              <Border Style="{StaticResource Tile}" Padding="10" Height="112">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                  <TextBlock x:Name="WorkspaceActivityList" Text="Activity export not available" FontSize="12" TextWrapping="Wrap"/>
+                </ScrollViewer>
+              </Border>
             </StackPanel>
 
             <!-- ======== SETTINGS: sidebar + one section at a time ======== -->
