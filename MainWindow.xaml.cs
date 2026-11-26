@@ -3535,7 +3535,7 @@ public partial class MainWindow : Window
         _y.Step(dt);
         long stageSpringEnd = System.Diagnostics.Stopwatch.GetTimestamp();
         // volume (Morph island): while the height moves fast the width gives back a little, up to 5 %
-        Island.Width = Math.Max(20, _w.Value * (1 + Math.Clamp(-_h.Velocity / 7000, -0.05, 0.05)));
+        Island.Width = Math.Max(20, _w.Value * (_calmTabMorph ? 1 : (1 + Math.Clamp(-_h.Velocity / 7000, -0.05, 0.05))));
         // Morph island's states are small (36…84 px); this island opens to hundreds of pixels, and folding, the same
         // spring would dip tens of pixels under the pill — for a moment nearly a line. Below its target while
         // shrinking, the height gives way softly (at most about 8 px, the original's size of dip), never under 20.
@@ -3737,10 +3737,21 @@ public partial class MainWindow : Window
         if (Math.Abs(Height - h) > 1) Height = h;
     }
 
+    private bool _calmTabMorph;
+
     private void MorphTo(Size size)
     {
+        bool calm = _mode == Mode.Expanded && _calmTabMorph;
+        if (calm && size.Width == _w.Target && size.Height == _h.Target) return;
         GrowWindowFor(size);
         MorphSprings(grow: size.Width * size.Height > _w.Target * _h.Target);
+        if (calm)
+        {
+            _w.Damping = 2 * Math.Sqrt(_w.Stiffness);
+            _h.Damping = 2 * Math.Sqrt(_h.Stiffness);
+            _w.Velocity = 0;
+            _h.Velocity = 0;
+        }
         _w.Target = size.Width;
         _hShrinking = size.Height < _h.Value;
         _h.Target = size.Height;
@@ -3852,7 +3863,7 @@ public partial class MainWindow : Window
     private void SetMode(Mode mode)
     {
         var old = _mode;
-        if (old != mode) _modeGeneration++;
+        if (old != mode) { _modeGeneration++; _calmTabMorph = false; }
         _mode = mode;
         if (mode == Mode.Expanded && old != Mode.Expanded) HomeMissed.Refresh(fold: true);
 
@@ -3978,6 +3989,7 @@ public partial class MainWindow : Window
         {
             // Tab selection already slides the page and morphs the island size.
             // Do not add a second decorative impulse to the island body here.
+            _calmTabMorph = true;
             Measure("page: initial measure", () => MorphTo(TargetSize(Mode.Expanded)));
             Measure("page: content refresh", () => OnPageShown(sizeAlreadyMeasured: true));
         }
